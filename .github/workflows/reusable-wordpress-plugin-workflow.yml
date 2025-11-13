@@ -96,8 +96,8 @@ jobs:
         uses: chekalsky/phpcs-action@v1
         with:
           enable_warnings: true
-          standard: ${{ inputs.phpcs_standard }}
           phpcs_bin_path: './vendor/bin/phpcs'
+          args: '--standard=${{ inputs.phpcs_standard }}'
 
       - name: WordPress Security Scanner
         uses: 10up/wp-scanner-action@v1
