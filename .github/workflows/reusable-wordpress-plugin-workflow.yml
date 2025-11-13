@@ -99,8 +99,8 @@ jobs:
           standard: ${{ inputs.phpcs_standard }}
           phpcs_bin_path: './vendor/bin/phpcs'
 
-      - name: WordPress Vulnerability Scanner
-        uses: 10up/wpvulnerability-scanner@v1
+      - name: WordPress Security Scanner
+        uses: 10up/wp-scanner-action@v1
         with:
           fail_on_error: true
 
