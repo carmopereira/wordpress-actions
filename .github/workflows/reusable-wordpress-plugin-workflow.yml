@@ -1,22 +1,8 @@
-name: WordPress Plugin Reusable Workflow
+name: WordPress Plugin Auto-Detect Workflow
 
 on:
   workflow_call:
     inputs:
-      plugin_slug:
-        description: 'WordPress.org plugin slug'
-        required: true
-        type: string
-      php_version:
-        description: 'PHP version to test (default: 8.1)'
-        required: false
-        type: string
-        default: '8.1'
-      wordpress_version:
-        description: 'WordPress version to test (default: latest)'
-        required: false
-        type: string
-        default: 'latest'
       enable_deploy:
         description: 'Enable WordPress.org deploy on tags'
         required: false
@@ -28,32 +14,90 @@ on:
         type: string
         default: 'WordPress'
     secrets:
-      SVN_USERNAME:
-        description: 'WordPress.org SVN username'
+      WORDPRESS_SVN_USERNAME:
         required: false
-      SVN_PASSWORD:
-        description: 'WordPress.org SVN password'
+      WORDPRESS_SVN_PASSWORD:
         required: false
 
 jobs:
-  quality-checks:
-    name: Code Quality & Security
+  detect-plugin-info:
+    name: Detect Plugin Info
     runs-on: ubuntu-latest
+    outputs:
+      plugin_slug: ${{ steps.plugin_info.outputs.slug }}
+      php_version: ${{ steps.plugin_info.outputs.php_version }}
+      plugin_version: ${{ steps.plugin_info.outputs.version }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup PHP
+      - name: Extract Plugin Information
+        id: plugin_info
+        run: |
+          PLUGIN_FILE=$(grep -ril "Plugin Name:" . --include="*.php" | head -n 1)
+          
+          if [ -z "$PLUGIN_FILE" ]; then
+            echo "❌ Erro: Ficheiro principal do plugin não encontrado!"
+            exit 1
+          fi
+          
+          echo "📄 Ficheiro do plugin: $PLUGIN_FILE"
+          
+          SLUG=$(grep -i "Text Domain:" "$PLUGIN_FILE" | head -n 1 | sed 's/.*Text Domain:\s*//' | tr -d ' \r\n')
+          
+          if [ -z "$SLUG" ]; then
+            SLUG="${GITHUB_REPOSITORY##*/}"
+            echo "⚠️  Text Domain não encontrado, usando nome do repo: $SLUG"
+          else
+            echo "✓ Text Domain encontrado: $SLUG"
+          fi
+          
+          PHP_VERSION=$(grep -i "Requires PHP:" "$PLUGIN_FILE" | head -n 1 | sed 's/.*Requires PHP:\s*//' | tr -d ' \r\n')
+          
+          if [ -z "$PHP_VERSION" ]; then
+            PHP_VERSION="7.4"
+            echo "⚠️  Requires PHP não encontrado, usando padrão: $PHP_VERSION"
+          else
+            echo "✓ Requires PHP encontrado: $PHP_VERSION"
+          fi
+          
+          PLUGIN_VERSION=$(grep -i "Version:" "$PLUGIN_FILE" | head -n 1 | sed 's/.*Version:\s*//' | tr -d ' \r\n')
+          echo "✓ Version: $PLUGIN_VERSION"
+          
+          echo "slug=$SLUG" >> $GITHUB_OUTPUT
+          echo "php_version=$PHP_VERSION" >> $GITHUB_OUTPUT
+          echo "version=$PLUGIN_VERSION" >> $GITHUB_OUTPUT
+          
+          echo ""
+          echo "📦 Informação do Plugin:"
+          echo "   Slug: $SLUG"
+          echo "   PHP Version: $PHP_VERSION"
+          echo "   Plugin Version: $PLUGIN_VERSION"
+
+  quality-checks:
+    name: Code Quality & Security
+    runs-on: ubuntu-latest
+    needs: detect-plugin-info
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup PHP ${{ needs.detect-plugin-info.outputs.php_version }}
         uses: shivammathur/setup-php@v2
         with:
-          php-version: ${{ inputs.php_version }}
+          php-version: ${{ needs.detect-plugin-info.outputs.php_version }}
           coverage: none
+
+      - name: Install Composer dependencies
+        if: hashFiles('composer.json') != ''
+        run: composer install --prefer-dist --no-progress
 
       - name: PHPCS Check
         uses: chekalsky/phpcs-action@v1
         with:
           enable_warnings: true
           standard: ${{ inputs.phpcs_standard }}
+          phpcs_bin_path: './vendor/bin/phpcs'
 
       - name: WordPress Vulnerability Scanner
         uses: 10up/wpvulnerability-scanner@v1
@@ -63,7 +107,7 @@ jobs:
   build:
     name: Build Plugin ZIP
     runs-on: ubuntu-latest
-    needs: quality-checks
+    needs: [detect-plugin-info, quality-checks]
     if: startsWith(github.ref, 'refs/tags/')
     steps:
       - name: Checkout code
@@ -79,14 +123,21 @@ jobs:
       - name: Upload ZIP as artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ inputs.plugin_slug }}-zip
+          name: ${{ needs.detect-plugin-info.outputs.plugin_slug }}-${{ needs.detect-plugin-info.outputs.plugin_version }}.zip
           path: ${{ github.event.repository.name }}.zip
           retention-days: 30
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: ${{ github.event.repository.name }}.zip
+          generate_release_notes: true
+          name: "v${{ needs.detect-plugin-info.outputs.plugin_version }}"
 
   deploy:
     name: Deploy to WordPress.org
     runs-on: ubuntu-latest
-    needs: build
+    needs: [detect-plugin-info, build]
     if: startsWith(github.ref, 'refs/tags/') && inputs.enable_deploy
     steps:
       - name: Checkout code
@@ -97,6 +148,6 @@ jobs:
         env:
           SVN_USERNAME: ${{ secrets.WORDPRESS_SVN_USERNAME }}
           SVN_PASSWORD: ${{ secrets.WORDPRESS_SVN_PASSWORD }}
-          SLUG: ${{ inputs.plugin_slug }}
+          SLUG: ${{ needs.detect-plugin-info.outputs.plugin_slug }}
         with:
           generate-zip: true
