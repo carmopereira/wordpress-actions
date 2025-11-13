@@ -92,11 +92,10 @@ jobs:
         if: hashFiles('composer.json') != ''
         run: composer install --prefer-dist --no-progress
 
-      - name: PHPCS Check
-        uses: chekalsky/phpcs-action@v1
+      - name: WPCS Check
+        uses: 10up/wpcs-action@stable
         with:
-          enable_warnings: true
-          args: '--standard=${{ inputs.phpcs_standard }} .'
+          standard: ${{ inputs.phpcs_standard }}
 
       - name: WordPress Security Scanner
         uses: 10up/wp-scanner-action@v1
