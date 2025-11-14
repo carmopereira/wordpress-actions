@@ -1,0 +1,109 @@
+name: Coding Standards
+
+on:
+  # Corre em pushes para main/develop
+  push:
+    branches: [ main, develop ]
+  
+  # Corre em pull requests
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      # Ficheiros que devem trigger o workflow
+      - '**.php'
+      - '**.css'
+      - '**.scss'
+      - '**.js'
+      - 'package*.json'
+      - 'phpcs.xml.dist'
+      - '.stylelintrc*'
+      - '.eslintrc*'
+      - '.github/workflows/*.yml'
+  
+  # Permite correr manualmente
+  workflow_dispatch:
+
+jobs:
+  # ============================================
+  # PHP Coding Standards (via 10up)
+  # ============================================
+  phpcs:
+    name: PHP Coding Standards
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout do código
+        uses: actions/checkout@v4
+        with:
+          # Importante para only_changed_lines funcionar
+          fetch-depth: 0
+      
+      - name: Verificar PHP Coding Standards
+        uses: 10up/wpcs-action@stable
+        with:
+          # Standard a usar - escolhe um:
+          # 'WordPress' | 'WordPress-Core' | 'WordPress-VIP-Go' | '10up-Default'
+          standard: 'WordPress'
+          
+          # Mostrar warnings além de errors
+          enable_warnings: true
+          
+          # Verificar apenas linhas alteradas (mais rápido em PRs)
+          only_changed_lines: true
+          
+          # Se quiseres usar phpcs.xml.dist local, descomenta:
+          # use_local_config: 'true'
+
+  # ============================================
+  # CSS/SCSS Coding Standards
+  # ============================================
+  css-lint:
+    name: CSS/SCSS Standards
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout do código
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          # Se tens .nvmrc, usa isso:
+          node-version-file: '.nvmrc'
+          # Senão, define versão específica:
+          # node-version: '20'
+          cache: 'npm'
+      
+      - name: Instalar dependências NPM
+        run: npm ci
+      
+      - name: Verificar CSS/SCSS
+        run: npm run lint:css
+        # Se não tens este script, podes usar:
+        # run: npx stylelint "**/*.{css,scss}"
+
+  # ============================================
+  # JavaScript Coding Standards
+  # ============================================
+  js-lint:
+    name: JavaScript Standards
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout do código
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+          # node-version: '20'
+          cache: 'npm'
+      
+      - name: Instalar dependências NPM
+        run: npm ci
+      
+      - name: Verificar JavaScript
+        run: npm run lint:js
+        # Se não tens este script, podes usar:
+        # run: npx eslint "**/*.js"
