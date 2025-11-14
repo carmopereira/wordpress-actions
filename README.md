@@ -1,4 +1,31 @@
-# GamersGrass WordPress Actions
+# workflows disponíveis
+
+- Wordpress Coding Standards
+- Re-usable WordPress Actions
+
+# WordPress Coding Standards
+
+✅ PHP (via 10up/wpcs-action)
+
+Não precisa de Composer! 🎉
+Verifica WordPress Coding Standards
+Anotações automáticas nos PRs
+Verifica apenas linhas alteradas (super rápido!)
+Standard configurável (WordPress, VIP-Go, 10up-Default)
+
+✅ CSS/SCSS (via Stylelint)
+
+@wordpress/stylelint-config
+Regras WordPress oficiais
+Ignora minified files
+
+✅ JavaScript (via ESLint)
+
+@wordpress/eslint-plugin
+Configurado para jQuery e wp globals
+Ignora minified files
+
+# Re-usable WordPress Actions (ainda em fase de teste)
 
 Reusable GitHub Actions workflows para desenvolvimento de plugins WordPress com auto-detecção.
 
@@ -34,7 +61,3 @@ jobs:
 ### Organization Secrets
 - `WORDPRESS_SVN_USERNAME`
 - `WORDPRESS_SVN_PASSWORD`
-
-## Documentação
-
-Ver documentação completa em: [docs](https://github.com/gamersgrass/wordpress-actions)
