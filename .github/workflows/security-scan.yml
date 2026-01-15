@@ -1,0 +1,14 @@
+name: Security Scanner
+
+on:
+  workflow_call:
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: WordPress Scanner
+        uses: 10up/wordpress-scanner-action@main
