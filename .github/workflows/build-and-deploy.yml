@@ -1,0 +1,39 @@
+name: WordPress Plugin Build & Deploy
+
+on:
+  workflow_call:
+    secrets:
+      WORDPRESS_SVN_USERNAME:
+        required: true
+      WORDPRESS_SVN_PASSWORD:
+        required: true
+
+jobs:
+  build-deploy:
+    name: Build & Push to SVN
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      # Optional: If you use NPM for assets, build them first
+      # - name: Install NPM dependencies & Build
+      #   run: |
+      #     npm install
+      #     npm run build
+
+      - name: Build WordPress Plugin Zip
+        id: build_zip
+        uses: 10up/action-wordpress-plugin-asset-update@stable
+        # This prepares the assets and can be used to generate a ZIP artifact
+
+      - name: WordPress Plugin Scanner
+        uses: 10up/wordpress-scanner-action@main
+        # It's good practice to scan right before the final push
+
+      - name: Deploy to WordPress.org SVN
+        uses: 10up/action-wordpress-plugin-deploy@stable
+        env:
+          SVN_USERNAME: ${{ secrets.WORDPRESS_SVN_USERNAME }}
+          SVN_PASSWORD: ${{ secrets.WORDPRESS_SVN_PASSWORD }}
+          # The action will automatically detect the version from your plugin's main PHP file
