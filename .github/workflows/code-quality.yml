@@ -2,6 +2,7 @@ name: Code Quality (WP Standards)
 
 on:
   workflow_call: # Enables remote calls from other repos
+  workflow_dispatch: # Allows manual trigger
 
 jobs:
   lint:
